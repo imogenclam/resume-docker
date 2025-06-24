@@ -9,21 +9,19 @@ jobs:
       image: ghcr.io/xu-cheng/texlive-full:latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4  # Копирует ВСЕ файлы репо в рабочую папку
       
-      - name: Install missing packages
+      - name: Install missing LaTeX packages
         run: |
           tlmgr update --self
-          tlmgr install $(grep -hE '\\usepackage' resume/*.tex | sed 's/.*{\(.*\)}.*/\1/' | sort -u) || true
+          tlmgr install $(grep -hE '\\usepackage' *.tex | sed 's/.*{\(.*\)}.*/\1/' | sort -u) || true
           
       - name: Compile LaTeX
         run: |
-          cd resume
-          pdflatex -interaction=nonstopmode -file-line-error -halt-on-error main.tex || true
           pdflatex -interaction=nonstopmode -file-line-error -halt-on-error main.tex
           [ -f main.pdf ] || (echo "PDF generation failed"; exit 1)
           
       - uses: actions/upload-artifact@v4
         with:
           name: resume-pdf
-          path: resume/main.pdf
+          path: main.pdf          # Теперь PDF ищется в корне

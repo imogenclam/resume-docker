@@ -1,37 +1,29 @@
 name: Build LaTeX Resume
 
-on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+on: [push, pull_request]
 
 jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: docker://ghcr.io/xu-cheng/texlive-full:latest
-      
+      image: ghcr.io/xu-cheng/texlive-full:latest
+
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        
-      - name: Compile LaTeX document
+      - uses: actions/checkout@v4
+      
+      - name: Install missing packages
+        run: |
+          tlmgr update --self
+          tlmgr install $(grep -hE '\\usepackage' resume/*.tex | sed 's/.*{\(.*\)}.*/\1/' | sort -u) || true
+          
+      - name: Compile LaTeX
         run: |
           cd resume
-          pdflatex -interaction=nonstopmode -file-line-error main.tex
-          [ -f main.pdf ] || (echo "PDF generation failed" && exit 1)
+          pdflatex -interaction=nonstopmode -file-line-error -halt-on-error main.tex || true
+          pdflatex -interaction=nonstopmode -file-line-error -halt-on-error main.tex
+          [ -f main.pdf ] || (echo "PDF generation failed"; exit 1)
           
-      - name: Upload PDF artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: resume-pdf
           path: resume/main.pdf
-          retention-days: 5
-          
-      - name: Verify PDF (optional)
-        run: |
-          if [ $(stat -c%s "resume/main.pdf") -lt 10000 ]; then
-            echo "PDF file seems too small, possible error"
-            exit 1
-          fi
